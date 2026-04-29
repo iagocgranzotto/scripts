@@ -1,14 +1,29 @@
 import streamlit as st
-import pandas as pd
-import os
-import sqlite3
-
-# Nome do arquivo
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-arquivo_excel = os.path.join(BASE_DIR, "materiais.xlsx")
-#arquivo_excel = "Z:/AUTOMATIZAÇÃO/Compras/materiais.xlsx"
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 st.title("📦 Solicitação de Materiais")
+
+# 🔹 CACHE (melhoria de performance) — FICA NO TOPO
+@st.cache_resource
+def conectar_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        st.secrets["gcp_service_account"], scope
+    )
+
+    client = gspread.authorize(creds)
+    return client.open("ControleMateriais").sheet1
+
+
+# 🔹 CONTROLE DE ENVIO DUPLICADO — FICA NO TOPO
+if "enviado" not in st.session_state:
+    st.session_state.enviado = False
+
 
 # Formulário
 with st.form("form_materiais"):
@@ -23,7 +38,8 @@ with st.form("form_materiais"):
 
     submitted = st.form_submit_button("Revisar")
 
-# Revisão antes de salvar
+
+# Revisão
 if submitted:
     st.subheader("🔎 Revisão")
     st.write(f"**Solicitante:** {solicitante}")
@@ -32,30 +48,30 @@ if submitted:
     st.write(f"**Unidade:** {unidade}")
     st.write(f"**Material:** {descricao}")
 
-    confirmar = st.button("✅ Confirmar envio")
+    # 🔹 VALIDAÇÃO (entra aqui, antes de enviar)
+    if not solicitante or not descricao:
+        st.warning("⚠️ Preencha pelo menos Solicitante e Material")
+    
+    else:
+        # 🔹 BOTÃO DE CONFIRMAÇÃO
+        if st.button("✅ Confirmar envio") and not st.session_state.enviado:
 
-    if confirmar:
-        novo_dado = pd.DataFrame([{
-            "Solicitante": solicitante,
-            "Obra": obra,
-            "Quantidade": quantidade,
-            "Unidade": unidade,
-            "Material": descricao
-        }])
+            sheet = conectar_sheet()
 
-        # Se arquivo existe → append
-        if os.path.exists(arquivo_excel):
-            df_existente = pd.read_excel(arquivo_excel)
-            df_final = pd.concat([df_existente, novo_dado], ignore_index=True)
-        else:
-            df_final = novo_dado
+            sheet.append_row([
+                solicitante,
+                obra,
+                quantidade,
+                unidade,
+                descricao
+            ])
 
-        df_final.to_excel(arquivo_excel, index=False)
+            st.session_state.enviado = True  # 🔹 trava duplicidade
 
-        #Enviar para base sqlite
-        #conn = sqlite3.connect("Z:/AUTOMATIZAÇÃO/Compras/compras.db")
-        conn = sqlite3.connect(os.path.join(BASE_DIR, "compras.db"))
-        novo_dado.to_sql("compras_obras", conn, if_exists="append", index=False)
-        conn.close()
+            st.success("✅ Material registrado no Google Sheets!")
 
-        st.success("✅ Material registrado com sucesso!")
+
+# 🔹 RESET OPCIONAL (permite novo envio sem recarregar página)
+if st.session_state.enviado:
+    if st.button("➕ Novo envio"):
+        st.session_state.enviado = False
