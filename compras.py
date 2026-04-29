@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
 st.title("📦 Solicitação de Materiais")
 
@@ -42,9 +43,12 @@ with st.form("form_materiais"):
 
         else:
             try:
+                data_envio = datetime.now().strftime("%d/%m/%Y %H:%M")
+
                 sheet = conectar_sheet()
 
                 sheet.append_row([
+                    data_envio,
                     solicitante,
                     obra,
                     quantidade,
