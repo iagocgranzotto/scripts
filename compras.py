@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
+import pytz
 
 st.title("📦 Solicitação de Materiais")
 
@@ -43,7 +44,8 @@ with st.form("form_materiais"):
 
         else:
             try:
-                data_envio = datetime.now().strftime("%d/%m/%Y %H:%M")
+                fuso = pytz.timezone("America/Sao_Paulo")
+                data_envio = datetime.now(fuso).strftime("%d/%m/%Y %H:%M")
 
                 sheet = conectar_sheet()
 
