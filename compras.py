@@ -4,7 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 st.title("📦 Solicitação de Materiais")
 
-# 🔹 CACHE (melhoria de performance) — FICA NO TOPO
+# 🔹 CACHE (performance)
 @st.cache_resource
 def conectar_sheet():
     scope = [
@@ -20,12 +20,7 @@ def conectar_sheet():
     return client.open("ControleMateriais").sheet1
 
 
-# 🔹 CONTROLE DE ENVIO DUPLICADO — FICA NO TOPO
-if "enviado" not in st.session_state:
-    st.session_state.enviado = False
-
-
-# Formulário
+# 🔹 FORMULÁRIO
 with st.form("form_materiais"):
     solicitante = st.text_input("Nome do Solicitante")
     obra = st.text_input("Nome da Obra")
@@ -36,42 +31,28 @@ with st.form("form_materiais"):
     )
     descricao = st.text_area("Descrição do Material")
 
-    submitted = st.form_submit_button("Revisar")
+    enviar = st.form_submit_button("✅ Enviar")
 
+    # 🔹 AQUI ACONTECE O ENVIO (SEM BOTÃO EXTRA)
+    if enviar:
 
-# Revisão
-if submitted:
-    st.subheader("🔎 Revisão")
-    st.write(f"**Solicitante:** {solicitante}")
-    st.write(f"**Obra:** {obra}")
-    st.write(f"**Quantidade:** {quantidade}")
-    st.write(f"**Unidade:** {unidade}")
-    st.write(f"**Material:** {descricao}")
+        # Validação
+        if not solicitante or not descricao:
+            st.warning("⚠️ Preencha pelo menos Solicitante e Material")
 
-    # 🔹 VALIDAÇÃO (entra aqui, antes de enviar)
-    if not solicitante or not descricao:
-        st.warning("⚠️ Preencha pelo menos Solicitante e Material")
-    
-    else:
-        # 🔹 BOTÃO DE CONFIRMAÇÃO
-        if st.button("✅ Confirmar envio") and not st.session_state.enviado:
+        else:
+            try:
+                sheet = conectar_sheet()
 
-            sheet = conectar_sheet()
+                sheet.append_row([
+                    solicitante,
+                    obra,
+                    quantidade,
+                    unidade,
+                    descricao
+                ])
 
-            sheet.append_row([
-                solicitante,
-                obra,
-                quantidade,
-                unidade,
-                descricao
-            ])
+                st.success("✅ Material registrado no Google Sheets!")
 
-            st.session_state.enviado = True  # 🔹 trava duplicidade
-
-            st.success("✅ Material registrado no Google Sheets!")
-
-
-# 🔹 RESET OPCIONAL (permite novo envio sem recarregar página)
-if st.session_state.enviado:
-    if st.button("➕ Novo envio"):
-        st.session_state.enviado = False
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
