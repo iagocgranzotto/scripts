@@ -276,22 +276,6 @@ with aba2:
 # =========================
 # ESTOQUE
 # =========================
-# with aba3:
-#     st.subheader("Estoque Atual")
-
-#     estoque = calcular_estoque(produtos, movimentacoes)
-
-#     filtro = st.text_input("Filtro (código ou nome)")
-
-#     if filtro:
-#         estoque = estoque[
-#             estoque["codigo"].astype(str).str.contains(filtro, case=False) |
-#             estoque["nome"].str.contains(filtro, case=False)
-#         ]
-    
-#     estoque = estoque.loc[:, ~estoque.columns.duplicated()]
-    
-#     st.dataframe(estoque, use_container_width=True)
 
 with aba3:
     st.subheader("Estoque Atual")
