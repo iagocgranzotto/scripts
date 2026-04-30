@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import pytz
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
+tz = pytz.timezone("America/Sao_Paulo")
+agora = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
 
 def normalizar_codigo(codigo):
     return str(codigo).strip().zfill(5)
@@ -60,11 +64,31 @@ def carregar_dados():
 
 
 def salvar_produtos(df, worksheet):
+    df = df.copy()
+
+    for col in df.columns:
+        df[col] = df[col].astype(str)
+
+    df = df.fillna("")
+    df = df.replace(["nan", "None", "NaT"], "")
+
     worksheet.clear()
     worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
 
 def salvar_mov(df, worksheet):
+    df = df.copy()
+
+    # Converte tudo para string (seguro para JSON)
+    for col in df.columns:
+        df[col] = df[col].astype(str)
+
+    # Remove NaN / None
+    df = df.fillna("")
+
+    # Remove caracteres problemáticos
+    df = df.replace(["nan", "None", "NaT"], "")
+
     worksheet.clear()
     worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
@@ -219,7 +243,7 @@ with aba2:
                 "quantidade": qtd,
                 "tipo": "entrada",
                 "obs": obs,
-                "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "data": agora
             }])
 
             movimentacoes = pd.concat([movimentacoes, nova], ignore_index=True)
@@ -242,7 +266,7 @@ with aba2:
                     "quantidade": qtd,
                     "tipo": "saida",
                     "obs": obs,
-                    "data": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "data": agora
                 }])
 
                 movimentacoes = pd.concat([movimentacoes, nova], ignore_index=True)
