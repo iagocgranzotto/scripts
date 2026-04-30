@@ -4,6 +4,9 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+def normalizar_codigo(codigo):
+    return str(codigo).strip().zfill(5)
+
 # =========================
 # CONFIG
 # =========================
@@ -107,27 +110,73 @@ aba1, aba2, aba3 = st.tabs(["📋 Cadastro", "🔄 Movimentação", "📊 Estoqu
 with aba1:
     st.subheader("Cadastro de Produto")
 
-    codigo = st.text_input("Código (até 5 dígitos)")
-    nome = st.text_input("Nome")
-    descricao = st.text_area("Descrição")
-    preco = st.number_input("Preço", min_value=0.0, format="%.2f")
+    # NORMALIZA BASE
+    if not produtos.empty:
+        produtos["codigo"] = produtos["codigo"].astype(str).str.strip().str.zfill(5)
 
-    if st.button("Cadastrar"):
-        if not codigo.isdigit() or len(codigo) > 5:
-            st.error("Código inválido")
-        elif codigo in produtos["codigo"].astype(str).values:
-            st.error("Código já existe")
+    modo = st.radio("Modo", ["Cadastrar", "Editar"])
+
+    # =========================
+    # CADASTRAR
+    # =========================
+    if modo == "Cadastrar":
+        codigo = st.text_input("Código (até 5 dígitos)")
+        nome = st.text_input("Nome")
+        descricao = st.text_area("Descrição")
+        preco = st.number_input("Preço", min_value=0.0, format="%.2f")
+
+        if st.button("Cadastrar"):
+            codigo_formatado = normalizar_codigo(codigo)
+
+            codigos_existentes = produtos["codigo"].astype(str).values
+
+            if not codigo.isdigit() or len(codigo) > 5:
+                st.error("Código inválido")
+
+            elif codigo_formatado in codigos_existentes:
+                st.error("Código já existe")
+
+            elif nome.strip() == "":
+                st.error("Nome é obrigatório")
+
+            else:
+                novo = pd.DataFrame([{
+                    "codigo": codigo_formatado,
+                    "nome": nome.strip(),
+                    "descricao": descricao.strip(),
+                    "preco": preco
+                }])
+
+                produtos = pd.concat([produtos, novo], ignore_index=True)
+                salvar_produtos(produtos, produtos_ws)
+                st.success("Produto cadastrado")
+
+    # =========================
+    # EDITAR
+    # =========================
+    else:
+        if produtos.empty:
+            st.warning("Nenhum produto cadastrado")
         else:
-            novo = pd.DataFrame([{
-                "codigo": codigo,
-                "nome": nome,
-                "descricao": descricao,
-                "preco": preco
-            }])
+            lista_produtos = produtos["codigo"] + " - " + produtos["nome"]
+            selecionado = st.selectbox("Selecione o produto", lista_produtos)
 
-            produtos = pd.concat([produtos, novo], ignore_index=True)
-            salvar_produtos(produtos, produtos_ws)
-            st.success("Produto cadastrado")
+            codigo_sel = selecionado.split(" - ")[0]
+            produto = produtos[produtos["codigo"] == codigo_sel].iloc[0]
+
+            novo_nome = st.text_input("Nome", value=produto["nome"])
+            nova_desc = st.text_area("Descrição", value=produto["descricao"])
+            novo_preco = st.number_input("Preço", value=float(produto["preco"]), format="%.2f")
+
+            if st.button("Atualizar Produto"):
+                idx = produtos[produtos["codigo"] == codigo_sel].index[0]
+
+                produtos.loc[idx, "nome"] = novo_nome.strip()
+                produtos.loc[idx, "descricao"] = nova_desc.strip()
+                produtos.loc[idx, "preco"] = novo_preco
+
+                salvar_produtos(produtos, produtos_ws)
+                st.success("Produto atualizado com sucesso")
 
 # =========================
 # MOVIMENTAÇÃO
@@ -135,7 +184,7 @@ with aba1:
 with aba2:
     st.subheader("Movimentação")
 
-    cod = st.text_input("Código do produto")
+    cod = normalizar_codigo(st.text_input("Código do produto"))
     qtd = st.number_input("Quantidade", min_value=1)
     obs = st.text_input("Observação")
 
@@ -158,7 +207,9 @@ with aba2:
             st.success("Entrada registrada")
 
     if st.button("Saída"):
-        if cod not in produtos["codigo"].astype(str).values:
+        codigos_existentes = produtos["codigo"].astype(str).str.strip().str.zfill(5)
+
+        if cod not in codigos_existentes.values:
             st.error("Produto não encontrado")
         else:
             qtd_atual = estoque.loc[estoque["codigo"] == cod, "quantidade"]
