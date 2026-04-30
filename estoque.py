@@ -276,19 +276,66 @@ with aba2:
 # =========================
 # ESTOQUE
 # =========================
+# with aba3:
+#     st.subheader("Estoque Atual")
+
+#     estoque = calcular_estoque(produtos, movimentacoes)
+
+#     filtro = st.text_input("Filtro (código ou nome)")
+
+#     if filtro:
+#         estoque = estoque[
+#             estoque["codigo"].astype(str).str.contains(filtro, case=False) |
+#             estoque["nome"].str.contains(filtro, case=False)
+#         ]
+    
+#     estoque = estoque.loc[:, ~estoque.columns.duplicated()]
+    
+#     st.dataframe(estoque, use_container_width=True)
+
 with aba3:
     st.subheader("Estoque Atual")
 
     estoque = calcular_estoque(produtos, movimentacoes)
 
-    filtro = st.text_input("Filtro (código ou nome)")
+    # Remove colunas duplicadas (segurança)
+    estoque = estoque.loc[:, ~estoque.columns.duplicated()]
+
+    # =========================
+    # CONVERSÕES
+    # =========================
+    estoque["preco"] = pd.to_numeric(estoque["preco"], errors="coerce")
+    estoque["quantidade"] = pd.to_numeric(estoque["quantidade"], errors="coerce")
+
+    # =========================
+    # FILTRO
+    # =========================
+    filtro = st.text_input("Filtro (código, nome ou descrição)")
 
     if filtro:
         estoque = estoque[
             estoque["codigo"].astype(str).str.contains(filtro, case=False) |
-            estoque["nome"].str.contains(filtro, case=False)
+            estoque["nome"].str.contains(filtro, case=False) |
+            estoque["descricao"].str.contains(filtro, case=False)
         ]
-    
-    estoque = estoque.loc[:, ~estoque.columns.duplicated()]
-    
-    st.dataframe(estoque, use_container_width=True)
+
+    # =========================
+    # FORMATAÇÃO
+    # =========================
+    estoque["preco"] = estoque["preco"].apply(
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        if pd.notnull(x) else ""
+    )
+
+    estoque["quantidade"] = estoque["quantidade"].apply(
+        lambda x: f"{x:.2f}" if pd.notnull(x) else ""
+    )
+
+    st.dataframe(
+    estoque,
+    column_config={
+        "preco": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
+        "quantidade": st.column_config.NumberColumn("Quantidade", format="%.2f"),
+    },
+    use_container_width=True
+    )
