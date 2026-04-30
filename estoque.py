@@ -9,8 +9,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 # =========================
 st.set_page_config(page_title="Controle de Estoque", layout="wide")
 
-EMPRESA = "Minha Empresa"
-SITE = "www.minhaempresa.com"
+EMPRESA = "Controle de Estoque"
+SITE = "Cadastro de produtos, Controle de Entrada e Saída e Visão Geral"
 
 st.title(f"📦 {EMPRESA}")
 st.subheader(SITE)
@@ -39,8 +39,19 @@ def carregar_dados():
     produtos_ws = sheet.worksheet("produtos")
     mov_ws = sheet.worksheet("movimentacoes")
 
-    produtos = pd.DataFrame(produtos_ws.get_all_records())
-    mov = pd.DataFrame(mov_ws.get_all_records())
+    produtos_raw = produtos_ws.get_all_records()
+    mov_raw = mov_ws.get_all_records()
+
+    # Garante estrutura mesmo vazio
+    if produtos_raw:
+        produtos = pd.DataFrame(produtos_raw)
+    else:
+        produtos = pd.DataFrame(columns=["codigo", "nome", "descricao", "preco"])
+
+    if mov_raw:
+        mov = pd.DataFrame(mov_raw)
+    else:
+        mov = pd.DataFrame(columns=["codigo", "quantidade", "tipo", "obs", "data"])
 
     return produtos, mov, produtos_ws, mov_ws
 
