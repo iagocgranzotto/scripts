@@ -331,11 +331,4 @@ with aba3:
         lambda x: f"{x:.2f}" if pd.notnull(x) else ""
     )
 
-    st.dataframe(
-    estoque,
-    column_config={
-        "preco": st.column_config.NumberColumn("Preço", format="R$ %.2f"),
-        "quantidade": st.column_config.NumberColumn("Quantidade", format="%.2f"),
-    },
-    use_container_width=True
-    )
+    st.dataframe(estoque, use_container_width=True)
