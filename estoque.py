@@ -70,25 +70,42 @@ def salvar_mov(df, worksheet):
 
 
 def calcular_estoque(produtos, mov):
+    # Normaliza códigos
+    produtos["codigo"] = produtos["codigo"].astype(str).str.strip().str.zfill(5)
+
     if mov.empty:
         produtos["quantidade"] = 0
         produtos["ultima_mov"] = None
         return produtos
 
+    mov["codigo"] = mov["codigo"].astype(str).str.strip().str.zfill(5)
+
+    # Calcula entrada/saida
     mov["quantidade_calc"] = mov.apply(
         lambda x: x["quantidade"] if x["tipo"] == "entrada" else -x["quantidade"],
         axis=1
     )
 
-    estoque = mov.groupby("codigo")["quantidade_calc"].sum().reset_index()
+    estoque = mov.groupby("codigo", as_index=False)["quantidade_calc"].sum()
 
-    ultima = mov.sort_values("data").groupby("codigo").last().reset_index()
-    ultima = ultima[["codigo", "data"]].rename(columns={"data": "ultima_mov"})
+    ultima = (
+        mov.sort_values("data")
+        .groupby("codigo", as_index=False)
+        .last()[["codigo", "data"]]
+        .rename(columns={"data": "ultima_mov"})
+    )
 
+    # Merge seguro
     resultado = produtos.merge(estoque, on="codigo", how="left")
     resultado = resultado.merge(ultima, on="codigo", how="left")
 
+    # Limpeza
     resultado["quantidade_calc"] = resultado["quantidade_calc"].fillna(0)
+
+    # Remove possíveis duplicadas (blindagem)
+    resultado = resultado.loc[:, ~resultado.columns.duplicated()]
+
+    # Renomeia
     resultado = resultado.rename(columns={"quantidade_calc": "quantidade"})
 
     return resultado
@@ -98,6 +115,9 @@ def calcular_estoque(produtos, mov):
 # CARREGAR DADOS
 # =========================
 produtos, movimentacoes, produtos_ws, mov_ws = carregar_dados()
+
+produtos = produtos.loc[:, ~produtos.columns.duplicated()]
+movimentacoes = movimentacoes.loc[:, ~movimentacoes.columns.duplicated()]
 
 # =========================
 # ABAS
@@ -244,5 +264,7 @@ with aba3:
             estoque["codigo"].astype(str).str.contains(filtro, case=False) |
             estoque["nome"].str.contains(filtro, case=False)
         ]
-
+    
+    estoque = estoque.loc[:, ~estoque.columns.duplicated()]
+    
     st.dataframe(estoque, use_container_width=True)
