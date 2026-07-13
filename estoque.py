@@ -146,7 +146,7 @@ movimentacoes = movimentacoes.loc[:, ~movimentacoes.columns.duplicated()]
 # =========================
 # ABAS
 # =========================
-aba1, aba2, aba3 = st.tabs(["📋 Cadastro", "🔄 Movimentação", "📊 Estoque"])
+aba1, aba2, aba3, aba4 = st.tabs(["📋 Cadastro", "🔄 Movimentação", "🖊️ Estoque", "📊 BI"])
 
 # =========================
 # CADASTRO
@@ -338,3 +338,10 @@ with aba3:
     )
 
     st.dataframe(estoque, use_container_width=True)
+
+# =========================
+# BI
+# =========================
+
+with aba4:
+    st.subheader("BI")
