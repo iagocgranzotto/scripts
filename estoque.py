@@ -4,6 +4,7 @@ from datetime import datetime
 import pytz
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import plotly.express as px
 
 tz = pytz.timezone("America/Sao_Paulo")
 agora = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
@@ -345,3 +346,143 @@ with aba3:
 
 with aba4:
     st.subheader("BI")
+
+    # --------------------------
+    # PREPARAÇÃO DOS DADOS
+    # --------------------------
+    mov = movimentacoes.copy()
+
+    mov["quantidade"] = pd.to_numeric(mov["quantidade"])
+
+    mov["data"] = pd.to_datetime(mov["data"])
+
+    mov["quantidade_calc"] = mov.apply(
+        lambda x: x["quantidade"]
+        if x["tipo"] == "entrada"
+        else -x["quantidade"],
+        axis=1
+    )
+
+    mov = mov.sort_values("data")
+
+    # Junta o nome do produto
+    mov = mov.merge(
+        produtos[["codigo", "nome"]],
+        on="codigo",
+        how="left"
+    )
+
+    # --------------------------
+    # FILTROS
+    # --------------------------
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        periodo = st.selectbox(
+            "Período",
+            [
+                "7 dias",
+                "30 dias",
+                "90 dias",
+                "Todo período"
+            ]
+        )
+
+    with col2:
+
+        top = st.selectbox(
+            "Top Produtos",
+            [5,10,20,50,"Todos"]
+        )
+
+    with col3:
+
+        lista_produtos = sorted(mov["nome"].dropna().unique())
+
+        produtos_sel = st.multiselect(
+            "Produtos",
+            lista_produtos
+        )
+
+    # --------------------------
+    # FILTRO PERÍODO
+    # --------------------------
+
+    hoje = pd.Timestamp.now()
+
+    if periodo == "7 dias":
+        data_ini = hoje - pd.Timedelta(days=7)
+
+    elif periodo == "30 dias":
+        data_ini = hoje - pd.Timedelta(days=30)
+
+    elif periodo == "90 dias":
+        data_ini = hoje - pd.Timedelta(days=90)
+
+    else:
+        data_ini = mov["data"].min()
+
+    mov = mov[mov["data"] >= data_ini]
+
+    # --------------------------
+    # TOP PRODUTOS
+    # --------------------------
+
+    if top != "Todos":
+
+        ranking = (
+            mov.groupby("nome")["quantidade_calc"]
+               .apply(lambda x: x.abs().sum())
+               .sort_values(ascending=False)
+               .head(top)
+        )
+
+        mov = mov[mov["nome"].isin(ranking.index)]
+
+    # --------------------------
+    # FILTRO PRODUTOS
+    # --------------------------
+
+    if produtos_sel:
+
+        mov = mov[mov["nome"].isin(produtos_sel)]
+
+    # --------------------------
+    # SALDO ACUMULADO
+    # --------------------------
+
+    mov["saldo"] = (
+        mov.groupby("nome")["quantidade_calc"]
+           .cumsum()
+    )
+
+    # --------------------------
+    # GRÁFICO
+    # --------------------------
+
+    fig = px.line(
+        mov,
+        x="data",
+        y="saldo",
+        color="nome",
+        markers=True,
+        labels={
+            "data":"Data",
+            "saldo":"Quantidade",
+            "nome":"Produto"
+        },
+        title="Evolução do Estoque"
+    )
+
+    fig.update_layout(
+        height=650,
+        hovermode="x unified",
+        legend_title="Produtos"
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True
+    )
