@@ -292,6 +292,27 @@ with aba3:
     estoque["quantidade"] = pd.to_numeric(estoque["quantidade"], errors="coerce")
 
     # =========================
+    # ALERTA DE ESTOQUE BAIXO
+    # =========================
+
+    estoque_baixo = estoque[estoque["quantidade"] < 10]
+
+    if not estoque_baixo.empty:
+        st.warning(f"⚠️ Existem {len(estoque_baixo)} produto(s) com estoque inferior a 10 unidades.")
+
+        st.dataframe(
+            estoque_baixo[
+                ["codigo", "nome", "quantidade"]
+            ].sort_values("quantidade"),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.success("✅ Nenhum produto com estoque baixo.")
+
+    st.divider()
+
+    # =========================
     # FILTRO
     # =========================
     filtro = st.text_input("Filtro (código, nome ou descrição)")
