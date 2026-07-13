@@ -278,7 +278,7 @@ with aba2:
 # =========================
 
 with aba3:
-    st.subheader("Estoque Atual")
+    st.subheader("Estoque - Itens com pouca quantidade")
 
     estoque = calcular_estoque(produtos, movimentacoes)
 
