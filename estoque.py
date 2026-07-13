@@ -315,6 +315,7 @@ with aba3:
     # =========================
     # FILTRO
     # =========================
+    st.subheader("Estoque - Itens Cadastrados")
     filtro = st.text_input("Filtro (código, nome ou descrição)")
 
     if filtro:
